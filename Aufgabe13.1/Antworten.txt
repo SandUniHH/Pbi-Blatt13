@@ -1,0 +1,28 @@
+––– Benennen Sie den Typen von jeder der 8 deklarierten Variablen:
+  
+  c:		char
+  *string:	Pointer auf einen char (Spaeter initialisiert als erster Buchstabe eines Strings, also ein Array von chars)
+  string2:	Array von chars (Laenge 3, initialisiert mit 0en)
+  **strings:	Pointer auf ein Array von Pointern, die auf chars zeigen
+  num:		Integer
+  *nump:	Pointer auf einen Integer
+  a:		Integer
+  *b:		Pointer auf einen Integer
+
+––– Geben Sie jeweils den Wert der folgenden Ausdruecke an. Wenn der Wert eine Speicheradresse
+ist, schreiben Sie "Adresse"
+
+  – c:			'W'
+  – string2:		'A' (Kompletter String: "AB0")
+  – string2[0]: 	'A'
+  – *strings:		Adresse
+  – strings[2][2]:	'i'
+  – num:		66
+ 
+ 
+–––Geben Sie fuer jede der folgenden Ausdruecke an, ob sie wahr oder falsch sind.
+
+  – *strings[0] == *(string + 6):	wahr 	(zeigt beides auf string[6])
+  – b == nump:				wahr 	(zeigt beides auf die Adresse von a)
+  – *b == *nump:			falsch	(*b == 7, *nump == 5)
+  – string == strings[1]:		falsch	(string == 'H', strings[1] == 'A')
