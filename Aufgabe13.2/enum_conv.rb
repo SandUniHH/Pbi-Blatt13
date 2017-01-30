@@ -30,128 +30,116 @@ class EnumConverter
 	end
 	
 	def clean_comments()
-		@file_clean = @file.read.gsub(/\/\*.*?\*\//m, "")
+        @file_clean = @file.read.gsub(/\/\*.*?\*\//m, "")
 	end
 	
 	def each_entrylist()
 		enumtype_list = Array.new()
 		fill_list = 0
 		@file_clean.each_line { |line|
-			if line.index{'{'} == 0
-				fill_list = 1
-				next
-			elsif line.index{'}'} == 0
-				enumtype_list.push(line.gsub(/[}\s;]/, ''))
-				fill_list = 0
-				yield enumtype_list
-				enumtype_list.clear
-				next
-			end
+            clean_line = line.gsub(/[\s\n]/, '')
 
-			if fill_list == 1
-				enumtype_list.push(line.chomp)
+            if clean_line.empty?
+                next
+            end
+
+            if clean_line.include?('{')
+                fill_list = 1
+            elsif fill_list == 1
+                enumtype_list.push(clean_line.chomp)
+                if clean_line.index('}') == 0
+				    fill_list = 0
+				    yield enumtype_list
+				    enumtype_list.clear
+				end
 			end
 		}
 	end
 	
-	def generate_functions()
-		
-		functions = ''
+	def generate_functions(value_list)
 
-		@file_clean.each_entrylist() {|value_list|
-			enumtype_functions = ''
-			enum_maxlistindex = value_list.length - 1
-			enum_typename = value_list[enum_maxlistindex]
-
+        enum_maxlistindex = value_list.length - 1
+        enum_typename = value_list[enum_maxlistindex].gsub(/[}\s;]/, '')
 			# create the enum list
-			enumtype_functions << 'typedef enum {'
-			value_list.each {|i|
-				functions << i
-				if i < value_list.length - 3
-					functions << ', '
-				elsif i < value_list.length - 2
-					functions << '} '
-				else
-					functions << ";\n\n"
-				end
-			}
+			puts "typedef enum\n{"
+			value_list.each {|entry|
+				puts entry
+            }
 
 			# create struct
-			enumtype_functions << "const static struct {\n"
-			enumtype_functions << enum_typename + "value;\n"
-			enumtype_functions << 'const char *str;}'
-			enumtype_functions << 'conv' + enum_typename + "[] = {\n"
-					value_list[0..-1].each {|i|
-						functions << '{' + i + ', "' + i + '"}'
-						if i < value_list.length - 2
-							functions << ",\n"
-						end
-			}
-			enumtype_functions << "};\n\n"
+			puts <<~HEREDOC_struct
+			
+            const static struct 
+            {			
+            \t#{enum_typename} value;
+            \tconst char *str;
+            }
+            conv#{enum_typename}[] = 
+            {
+            HEREDOC_struct
+
+            value_list[0..-2].each_with_index {|entry, i|
+                clean_entry = entry.gsub(/,/, '') # remove trailing commas
+                print "\t{" + clean_entry + ', "' + clean_entry + '"}'
+                if i < value_list.length - 2
+                    puts ','
+                end
+            }
+			puts "\n};"
 
 			# create enum to String function
-			enumtype_functions <<-'HEREDOC_enum2string'
-			const char* ENUM_TYPENAME2String(int index)
+			puts <<~HEREDOC_enum2string
+			
+			const char* #{enum_typename}2String(int index)
 			{
-				return convENUM_TYPENAME[index].str;
+				return conv#{enum_typename}[index].str;
 			}
 			HEREDOC_enum2string
 
 			# create String to enum function
 
-			enumtype_functions <<-'HEREDOC_string2enum'
-			int string2ENUM_TYPENAME(const char *s)
+			puts <<~HEREDOC_string2enum
+			int string2#{enum_typename}(const char *s)
 			{
 				int i;
-				for (i = 0; i < sizeof(convENUM_TYPENAME) / sizeof(convENUM_TYPENAME[0]); i++)
+				for (i = 0; i < sizeof(conv#{enum_typename}) / sizeof(conv#{enum_typename}[0]); i++)
 				{
-					if (!strcmp(s, convENUM_TYPENAME[i].str)) // 0: match
-						return (int) convENUM_TYPENAME[i].value;
+					if (!strcmp(s, conv#{enum_typename}[i].str)) // 0: match
+						return (int) conv#{enum_typename}[i].value;
 				}	
 				return -1;
 			}
+
 			HEREDOC_string2enum
 
 			#create test function
 
-			enumtype_functions <<-'HEREDOC_test'
-			void ENUM_TYPENAME_test(void)
+			puts <<~HEREDOC_test
+			void #{enum_typename}_test(void)
 			{
 				int idx;
 				const char* s;
-				for (idx = 0; idx < ENUM_MAXLISTINDEX; idx++)
+				for (idx = 0; idx < #{enum_maxlistindex}; idx++)
 				{
-					s = ENUM_TYPENAME2String(idx);
-					int value = ENUM_TYPENAME(s);
-					assert(value != -1 && (ENUM_TYPENAME) value == idx);
+					s = #{enum_typename}2String(idx);
+					int value = string2#{enum_typename}(s);
+					assert(value != -1 && (#{enum_typename}) value == idx);
 				}
 			}
+
 			HEREDOC_test
 
-		substitutions = {
-			"ENUM_TYPENAME" 	=> "#{enum_typename}",
-			"ENUM_MAXLISTINDEX" => "#{enum_maxlistindex}"
-		}
-
-		functions << enumtype_functions.chomp.gsub(/(ENUM_TYPENAME|ENUM_MAXLISTINDEX)/, substitutions)
-		}
-		return functions
-	
 	end
 	
-	def	generate_code()
-		@generated_code <<-HEREDOC_Header
+	def	generate_header()
+		puts <<~HEREDOC_Header
 
 		#include <stdio.h>
 		#include <stdlib.h>
 		#include <assert.h>
 		#include <string.h>
+
 		HEREDOC_Header
-
-		@generated_code << generate_functions()
-
-		puts @generated_code
-		
 	end 
 
 end
@@ -167,4 +155,7 @@ filename = ARGV[0]
 
 converter = EnumConverter.new(filename)
 converter.clean_comments()
-converter.generate_code()
+converter.generate_header()
+converter.each_entrylist() {|value_list|
+    converter.generate_functions(value_list)
+    }

@@ -18,7 +18,7 @@ enumconv.c:enumconv.h
 enumconv-mn.c:enumconv.h
 
 test:enumconv.x
-	enumconv.x
+	./enumconv.x
 
 .PHONY:clean
 clean:
