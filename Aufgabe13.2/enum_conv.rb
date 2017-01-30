@@ -133,6 +133,7 @@ class EnumConverter
 	
 	def	generate_header()
 		puts <<~HEREDOC_Header
+		// Bocher Diedrich Sandmeier
 
 		#include <stdio.h>
 		#include <stdlib.h>
